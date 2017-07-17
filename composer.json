@@ -1,0 +1,22 @@
+{
+    "name": "sb15/abstract-json-rpc-client",
+    "type": "library",
+    "description": "Abstract JSON RPC client",
+    "keywords": ["api"],
+    "homepage": "https://github.com/sb15/abstract-json-rpc-client",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alexander Perov",
+            "email": "alex@sb6.ru"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Sb\\": "src"
+        }
+    },
+    "require": {
+
+    }
+}
