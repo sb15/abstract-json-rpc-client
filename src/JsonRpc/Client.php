@@ -2,6 +2,8 @@
 
 namespace Sb\JsonRpc;
 
+use Sb\JsonRpc\Exception\JsonRpcClientException;
+
 abstract class Client
 {
     const OPTION_HEADERS = 'headers';
@@ -10,12 +12,11 @@ abstract class Client
     private $methodsMap;
     private $headers = [];
 
-    public function __construct($endpoint, $options = [])
+    public function __construct($endpoint, array $options = [])
     {
         $this->endpoint = $endpoint;
         if (array_key_exists(self::OPTION_HEADERS, $options)) {
             $this->headers = $options[self::OPTION_HEADERS];
-            // $this->headers is array
         }
 
         $rc = new \ReflectionClass($this);
@@ -28,7 +29,7 @@ abstract class Client
 
                 $this->methodsMap[$method] = [];
                 foreach ($paramsMatches as $paramsMatch) {
-                    if (preg_match("#\\$(.+)#uis", $paramsMatch, $m)) {
+                    if (preg_match("#\\$(.+)#us", $paramsMatch, $m)) {
                         $this->methodsMap[$method][] = $m[1];
                     }
                 }
@@ -36,8 +37,15 @@ abstract class Client
         }
 
     }
-
-    public function __call($name, $arguments)
+    
+    /**
+     * @param $name
+     * @param array $arguments
+     *
+     * @return mixed
+     * @throws JsonRpcClientException
+     */
+    public function __call($name, array $arguments = [])
     {
         $params = [];
         foreach ($arguments as $idx => $argument) {
@@ -55,12 +63,18 @@ abstract class Client
 
         return $this->request($data);
     }
-
+    
+    /**
+     * @param $payload
+     *
+     * @return mixed
+     * @throws JsonRpcClientException
+     */
     public function request($payload)
     {
         $ch = curl_init();
         if (!$ch) {
-            throw new \RuntimeException('cURL init error');
+            throw new JsonRpcClientException('cURL init error');
         }
         curl_setopt($ch, CURLOPT_URL, $this->endpoint);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -78,18 +92,18 @@ abstract class Client
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
             curl_close($ch);
-            throw new \RuntimeException('Connection error to '. $this->endpoint . ' Return code: ' . $httpCode . ' Message: ' . $error);
+            throw new JsonRpcClientException('Connection error to '. $this->endpoint . ' Return code: ' . $httpCode . ' Message: ' . $error);
         }
         curl_close($ch);
 
         $response = \json_decode($response, true);
 
         if (!is_array($response)) {
-            throw new \Exception('Not valid response');
+            throw new JsonRpcClientException(JsonRpcClientException::INVALID_RESPONSE);
         }
 
         if (array_key_exists('error', $response)) {
-            throw new \Exception($response['error']['message'], $response['error']['code']);
+            throw new JsonRpcClientException($response['error']['message'], $response['error']['code']);
         }
 
         return $response['result'];
